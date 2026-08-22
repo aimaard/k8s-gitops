@@ -1,9 +1,51 @@
 provider:
-  name: digitalocean
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/amoniacou/external-dns-digitalocean-webhook
+      tag: latest
+    env:
+      - name: DO_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: do-token
+            key: DO_TOKEN
+      - name: DO_HTTP_RETRY_MAX
+        value: "5"
+    args:
+      - --port=8080
+      - --host=localhost
+      - --health-port=8888
+      - --health-host=0.0.0.0
+      - --log-level=info
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8888
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8888
+      initialDelaySeconds: 5
+      periodSeconds: 5
 
-env:
-  - name: DO_TOKEN
-    valueFrom:
-      secretKeyRef:
-        name: do-token
-        key: DO_TOKEN
+policy: sync
+registry: txt
+
+extraArgs:
+  webhook-provider-url: http://localhost:8080
+
+sources:
+  - ingress
+  - crd
