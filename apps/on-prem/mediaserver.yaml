@@ -17,6 +17,6 @@ spec:
       helm:
         valueFiles:
           - '$values/values/on-prem/mediaserver.yaml'
-    - repoURL: 'https://github.com/siegy22/k8s-gitops.git'
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       targetRevision: main
       ref: values

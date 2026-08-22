@@ -18,14 +18,14 @@ spec:
       helm:
         valueFiles:
           - '$values/values/matrix.yaml'
-    - repoURL: 'https://github.com/siegy22/k8s-gitops.git'
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       path: charts/mautrix-whatsapp
       targetRevision: main
       helm:
         releaseName: mautrix-whatsapp
         valueFiles:
           - '$values/values/mautrix-whatsapp.yaml'
-    - repoURL: 'https://github.com/siegy22/k8s-gitops.git'
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       targetRevision: main
       ref: values
       path: resources/matrix

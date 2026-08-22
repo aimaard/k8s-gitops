@@ -12,5 +12,5 @@ spec:
     syncOptions:
       - CreateNamespace=true
   sources:
-    - repoURL: 'https://github.com/siegy22/k8s-gitops.git'
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       path: resources/about-me

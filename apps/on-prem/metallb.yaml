@@ -15,6 +15,6 @@ spec:
     - repoURL: 'https://metallb.github.io/metallb'
       chart: metallb
       targetRevision: 0.16.1
-    - repoURL: 'https://github.com/siegy22/k8s-gitops.git'
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       targetRevision: main
       path: resources/on-prem/metallb
