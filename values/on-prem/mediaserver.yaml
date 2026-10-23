@@ -1,6 +1,6 @@
 general:
-  ingress_host: media.androme.da
-  plex_ingress_host: plex.androme.da
+  ingress_host: media.orion.siegrist.io
+  jellyfin_ingress_host: jellyfin.orion.siegrist.io
   storage:
     accessMode: "ReadWriteOnce"
     size: 2Ti
@@ -9,5 +9,9 @@ general:
     ingressClassName: "nginx"
 
 plex:
+  enabled: false
+
+jellyfin:
+  enabled: true
   service:
     type: LoadBalancer
