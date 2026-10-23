@@ -1,0 +1,22 @@
+# Upgrades k3s to whatever the stable channel points at.
+# To control minor bumps instead, replace `channel` with `version: v1.36.5+k3s1`
+# and let Renovate bump it.
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  serviceAccountName: system-upgrade
+  channel: https://update.k3s.io/v1-release/channels/stable
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: In
+        values: ["true"]
+  tolerations:
+    - operator: Exists
+  upgrade:
+    image: rancher/k3s-upgrade
