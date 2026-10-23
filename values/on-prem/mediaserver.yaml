@@ -15,3 +15,7 @@ jellyfin:
   enabled: true
   service:
     type: LoadBalancer
+  # Intel QuickSync via the intel-gpu-plugin; mounts /dev/dri into the pod.
+  resources:
+    limits:
+      gpu.intel.com/i915: "1"
