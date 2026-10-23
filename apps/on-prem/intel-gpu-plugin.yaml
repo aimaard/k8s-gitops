@@ -13,3 +13,14 @@ spec:
     repoURL: 'https://github.com/intel/intel-device-plugins-for-kubernetes.git'
     targetRevision: v0.37.1
     path: deployments/gpu_plugin
+    kustomize:
+      patches:
+        # The iGPU also has a simple-framebuffer by-path link (-> card0), which
+        # breaks container start with the default `single` by-path mounts.
+        - target:
+            kind: DaemonSet
+            name: intel-gpu-plugin
+          patch: |-
+            - op: add
+              path: /spec/template/spec/containers/0/args
+              value: ["-bypath=none"]
