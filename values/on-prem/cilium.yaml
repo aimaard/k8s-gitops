@@ -14,3 +14,8 @@ hubble:
     enabled: true
   ui:
     enabled: true
+  # Generate certs in-cluster instead of on every helm render, which keeps
+  # the Argo app OutOfSync.
+  tls:
+    auto:
+      method: cronJob
