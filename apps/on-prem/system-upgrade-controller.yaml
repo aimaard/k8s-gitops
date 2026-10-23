@@ -16,6 +16,18 @@ spec:
     - repoURL: 'https://github.com/rancher/system-upgrade-controller.git'
       targetRevision: v0.20.2
       path: .
+      kustomize:
+        patches:
+          # SELinux blocks container_t from reading the host CA bundle (cert_t)
+          # mounted from /etc/pki, so the controller can't resolve the channel.
+          - target:
+              kind: Deployment
+              name: system-upgrade-controller
+            patch: |-
+              - op: add
+                path: /spec/template/spec/securityContext/seLinuxOptions
+                value:
+                  type: spc_t
     - repoURL: 'https://github.com/rancher/system-upgrade-controller.git'
       targetRevision: v0.20.2
       path: pkg/crds/yaml/generated
