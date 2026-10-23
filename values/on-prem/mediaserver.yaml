@@ -11,6 +11,15 @@ general:
 plex:
   enabled: false
 
+# Fixed IP so the router can port-forward 51413 (TCP+UDP) for incoming peers.
+transmission:
+  service:
+    peer:
+      extraLBService: true
+      extraLBAnnotations:
+        metallb.io/loadBalancerIPs: 172.22.20.220
+        metallb.io/allow-shared-ip: transmission-peer
+
 jellyfin:
   enabled: true
   service:
