@@ -8,6 +8,10 @@ general:
   ingress:
     ingressClassName: "nginx"
 
+# Prowlarr replaces Jackett.
+jackett:
+  enabled: false
+
 plex:
   enabled: false
 
