@@ -25,9 +25,10 @@ spec:
               name: system-upgrade-controller
             patch: |-
               - op: add
-                path: /spec/template/spec/securityContext/seLinuxOptions
+                path: /spec/template/spec/securityContext
                 value:
-                  type: spc_t
+                  seLinuxOptions:
+                    type: spc_t
     - repoURL: 'https://github.com/rancher/system-upgrade-controller.git'
       targetRevision: v0.20.2
       path: pkg/crds/yaml/generated
