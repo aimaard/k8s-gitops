@@ -5,8 +5,25 @@ general:
     accessMode: "ReadWriteOnce"
     size: 2Ti
     pvcStorageClass: "local-path"
+  # Routing is done by HTTPRoutes (resources/on-prem/mediaserver).
   ingress:
-    ingressClassName: "nginx"
+    ingressClassName: ""
+
+sonarr:
+  ingress:
+    enabled: false
+
+radarr:
+  ingress:
+    enabled: false
+
+prowlarr:
+  ingress:
+    enabled: false
+
+sabnzbd:
+  ingress:
+    enabled: false
 
 # Prowlarr replaces Jackett.
 jackett:
@@ -17,6 +34,8 @@ plex:
 
 # Fixed IP so the router can port-forward 51413 (TCP+UDP) for incoming peers.
 transmission:
+  ingress:
+    enabled: false
   service:
     peer:
       extraLBService: true
@@ -26,6 +45,8 @@ transmission:
 
 jellyfin:
   enabled: true
+  ingress:
+    enabled: false
   service:
     type: LoadBalancer
   # Intel QuickSync via the intel-gpu-plugin; mounts /dev/dri into the pod.

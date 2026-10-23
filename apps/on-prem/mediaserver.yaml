@@ -11,6 +11,8 @@ spec:
     automated: {}
     syncOptions:
       - CreateNamespace=true
+      # HTTPRoute CRDs come from the envoy-gateway app.
+      - SkipDryRunOnMissingResource=true
   sources:
     - repoURL: 'https://github.com/kubealex/k8s-mediaserver-operator.git'
       path: helm-charts/k8s-mediaserver
@@ -20,3 +22,6 @@ spec:
     - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       targetRevision: main
       ref: values
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
+      targetRevision: main
+      path: resources/on-prem/mediaserver

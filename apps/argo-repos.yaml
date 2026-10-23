@@ -14,3 +14,18 @@ stringData:
   url: registry-1.docker.io/bitnamicharts
 type: Opaque
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: envoyproxy-oci-repo
+  namespace: argocd
+stringData:
+  enableOCI: 'true'
+  name: envoyproxy
+  project: on-prem-infra
+  type: helm
+  url: docker.io/envoyproxy
+type: Opaque
+---
