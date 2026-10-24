@@ -7,6 +7,10 @@ service:
 resourcesPreset: none
 persistence:
   size: 4Gi
+# The data volume is ReadWriteOnce on DO block storage, which attaches to one node
+# at a time: a rolling update deadlocks when the new pod lands on the other node.
+updateStrategy:
+  type: Recreate
 
 mariadb:
   auth:
