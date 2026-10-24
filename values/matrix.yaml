@@ -13,6 +13,10 @@ config:
 
 extraConfig:
   suppress_key_server_warning: true
+  # Cached media from other servers is re-fetched on demand. Local media (incl.
+  # everything the WhatsApp bridge stores) is kept.
+  media_retention:
+    remote_media_lifetime: 90d
   app_service_config_files:
     - /synapse/service_config_files/mautrix-whatsapp-registration.yaml
 
@@ -39,7 +43,7 @@ wellknown:
 
 persistence:
   enabled: true
-  size: 20Gi
+  size: 40Gi
 
 postgresql:
   enabled: true
