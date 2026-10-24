@@ -8,6 +8,7 @@ spec:
   parentRefs:
     - name: homeserver
       namespace: envoy-gateway-system
+      sectionName: https
   hostnames:
     - media.orion.siegrist.io
   rules:
@@ -41,6 +42,7 @@ spec:
   parentRefs:
     - name: homeserver
       namespace: envoy-gateway-system
+      sectionName: https
   hostnames:
     - jellyfin.orion.siegrist.io
   rules:
