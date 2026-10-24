@@ -15,7 +15,7 @@ spec:
     - repoURL: 'registry-1.docker.io/bitnamicharts'
       path: wordpress
       chart: wordpress
-      targetRevision: 33.1.2
+      targetRevision: 34.2.3
       helm:
         valueFiles:
           - '$values/values/arnold-wordpress.yaml'
