@@ -29,6 +29,10 @@ spec:
     metadata:
       labels:
         app: hermes
+      annotations:
+        # config.yaml is only copied in at pod start; keep this in step with
+        # its model so a model change rolls the pod.
+        hermes/model: claude-haiku-5-5
     spec:
       # The agent has a shell; it gets no Kubernetes API access.
       automountServiceAccountToken: false
