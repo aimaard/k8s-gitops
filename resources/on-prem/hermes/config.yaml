@@ -1,0 +1,19 @@
+# Copied over /opt/data/config.yaml on every start, so git stays the source of truth.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+  namespace: hermes
+data:
+  config.yaml: |
+    model:
+      provider: anthropic
+      default: claude-opus-5-5
+    terminal:
+      backend: local
+      timeout: 120
+    skills:
+      external_dirs:
+        - /opt/skills
+    stt:
+      enabled: true
