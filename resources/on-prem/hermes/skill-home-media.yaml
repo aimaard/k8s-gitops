@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-skill-home-media
+  namespace: hermes
+data:
+  SKILL.md: |
+    ---
+    name: home-media
+    description: Request, check and manage movies and TV shows on the home media server (Radarr, Sonarr, Jellyfin). Use for any "download/get/add <movie or show>" or "is <title> done?" request.
+    version: 1.0.0
+    platforms: [linux]
+    metadata:
+      hermes:
+        tags: [media, radarr, sonarr, jellyfin]
+        category: home
+    required_environment_variables:
+      - name: RADARR_API_KEY
+        prompt: Radarr API key
+      - name: SONARR_API_KEY
+        prompt: Sonarr API key
+    ---
+
+    # Home media server
+
+    Movies go through **Radarr**, TV shows through **Sonarr**. Both download via
+    Usenet first (torrent fallback) and import into Jellyfin automatically, so
+    adding a title with search enabled is all a request needs.
+
+    | App | API base (in-cluster) | Header |
+    |---|---|---|
+    | Radarr | `http://radarr.mediaserver:7878/radarr/api/v3` | `X-Api-Key: $RADARR_API_KEY` |
+    | Sonarr | `http://sonarr.mediaserver:8989/sonarr/api/v3` | `X-Api-Key: $SONARR_API_KEY` |
+
+    Watch link for the user: `http://jellyfin.orion.siegrist.io`
+
+    ## Rules
+    - If a lookup returns several plausible matches (remakes, same title in
+      different years), ask which one before adding. Otherwise just add it.
+    - Always use quality profile id `4` (HD-1080p) unless the user asks for
+      something else, and root folders `/movies` / `/tv`.
+    - Check whether the title already exists before adding; if it does, report
+      its status instead of adding it again.
+    - Never delete titles or files, and never change app settings, unless the
+      user explicitly asks for exactly that.
+    - Reply briefly: title (year), what you did, and roughly when to expect it.
+
+    ## Movies (Radarr)
+    ```sh
+    R=http://radarr.mediaserver:7878/radarr/api/v3; H="X-Api-Key: $RADARR_API_KEY"
+    # search the catalogue
+    curl -s -H "$H" "$R/movie/lookup?term=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "inception")"
+    # already in the library?
+    curl -s -H "$H" "$R/movie?tmdbId=27205"
+    # add + search: POST the chosen lookup object (saved as movie.json) with these fields set
+    python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); m.update(qualityProfileId=4, rootFolderPath="/movies", monitored=True, minimumAvailability="released", addOptions={"searchForMovie": True}); print(json.dumps(m))' movie.json \
+      | curl -s -H "$H" -H 'Content-Type: application/json' -d @- "$R/movie"
+    ```
+
+    ## TV shows (Sonarr)
+    ```sh
+    S=http://sonarr.mediaserver:8989/sonarr/api/v3; H="X-Api-Key: $SONARR_API_KEY"
+    curl -s -H "$H" "$S/series/lookup?term=breaking%20bad"
+    curl -s -H "$H" "$S/series?tvdbId=81189"
+    # monitor: all | future | missing | existing | firstSeason | latestSeason | pilot | none
+    python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); s.update(qualityProfileId=4, rootFolderPath="/tv", monitored=True, seasonFolder=True, addOptions={"monitor": "all", "searchForMissingEpisodes": True}); print(json.dumps(s))' series.json \
+      | curl -s -H "$H" -H 'Content-Type: application/json' -d @- "$S/series"
+    ```
+    For specific seasons only: add with `monitor:"none"`, then set
+    `seasons[].monitored` on the series (`PUT $S/series/<id>`) and run
+    `POST $S/command` with `{"name":"SeasonSearch","seriesId":<id>,"seasonNumber":<n>}`.
+
+    ## Status
+    - Download progress: `GET $R/queue` / `GET $S/queue` (`sizeleft`, `status`,
+      `trackedDownloadState`, `statusMessages`).
+    - Done: movie `hasFile: true`; episodes `GET $S/episode?seriesId=<id>` → `hasFile`.
+    - Nothing found yet: the title stays monitored and is grabbed automatically
+      when a release appears; tell the user that.

@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-data
+  namespace: hermes
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Secret `hermes-env` is created by hand (not in git):
+#   ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS,
+#   RADARR_API_KEY, SONARR_API_KEY, optional GROQ_API_KEY (voice memos)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes
+  namespace: hermes
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hermes
+  template:
+    metadata:
+      labels:
+        app: hermes
+    spec:
+      # The agent has a shell; it gets no Kubernetes API access.
+      automountServiceAccountToken: false
+      initContainers:
+        - name: config
+          image: busybox:1.37.0
+          command: ["sh", "-c", "cp /config/config.yaml /opt/data/config.yaml && chown 10000:10000 /opt/data /opt/data/config.yaml"]
+          volumeMounts:
+            - {name: data, mountPath: /opt/data}
+            - {name: config, mountPath: /config}
+      containers:
+        - name: hermes
+          image: nousresearch/hermes-agent:v0.22.5
+          args: ["gateway", "run"]
+          envFrom:
+            - secretRef:
+                name: hermes-env
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 2Gi}
+          volumeMounts:
+            - {name: data, mountPath: /opt/data}
+            - {name: skill-home-media, mountPath: /opt/skills/home-media, readOnly: true}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hermes-data
+        - name: config
+          configMap:
+            name: hermes-config
+        - name: skill-home-media
+          configMap:
+            name: hermes-skill-home-media
+---
+# No inbound traffic (Telegram is polled). Outbound: DNS, Radarr/Sonarr, and
+# the internet, but not the rest of the LAN or cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hermes
+  namespace: hermes
+spec:
+  podSelector:
+    matchLabels:
+      app: hermes
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mediaserver
+          podSelector:
+            matchExpressions:
+              - {key: app, operator: In, values: [radarr, sonarr]}
+      ports:
+        - {protocol: TCP, port: 7878}
+        - {protocol: TCP, port: 8989}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
