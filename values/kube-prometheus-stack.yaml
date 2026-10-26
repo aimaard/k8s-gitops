@@ -77,19 +77,15 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
 
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-    hosts:
-      - grafana.siegrist.io
-    tls:
-    - secretName: grafana-tls
-      hosts:
-      - grafana.siegrist.io
+  route:
+    main:
+      enabled: true
+      parentRefs:
+        - name: public
+          namespace: envoy-gateway-system
+          sectionName: https
+      hostnames:
+        - grafana.siegrist.io
 
 prometheus:
   prometheusSpec:
