@@ -21,6 +21,37 @@ spec:
         annotations:
           kubernetes.digitalocean.com/load-balancer-id: 207cd624-10cc-4cce-a4a9-d24eaab0736a
           service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL
+      # One Envoy per node, so draining a node during a cluster upgrade always leaves one serving.
+      envoyDeployment:
+        replicas: 2
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: envoy
+                  gateway.envoyproxy.io/owning-gateway-name: public
+              matchLabelKeys:
+                - pod-template-hash
+        container:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+      envoyPDB:
+        minAvailable: 1
+  # The DO load balancer needs up to ~15s (3 failed checks every 3s, 5s timeout) to stop sending
+  # traffic to a node whose Envoy is shutting down, so keep serving well past that.
+  shutdown:
+    minDrainDuration: 30s
+    drainTimeout: 60s
 ---
 # The single entry point for the cluster; apps attach HTTPRoutes to the https listener.
 apiVersion: gateway.networking.k8s.io/v1
