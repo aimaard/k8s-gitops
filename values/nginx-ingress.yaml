@@ -22,6 +22,9 @@ controller:
   service:
     annotations:
       service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
+      # Hands the load balancer (and its IP) over to the Envoy Gateway: the CCM stops
+      # updating it and won't delete it together with this Service.
+      service.kubernetes.io/do-loadbalancer-disown: "true"
   extraArgs:
     enable-ssl-passthrough: "true"
   kind: DaemonSet
