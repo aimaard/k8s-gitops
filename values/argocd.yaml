@@ -4,6 +4,9 @@ global:
 configs:
   params:
     server.insecure: true
+    # Let the API server compute diffs, so fields it defaults (e.g. Gateway API parentRefs group/kind)
+    # don't show up as permanently OutOfSync.
+    controller.diff.server.side: true
   rbac:
     policy.csv: |
       g, siegy22-org:default, role:admin
