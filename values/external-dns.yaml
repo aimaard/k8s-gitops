@@ -48,4 +48,5 @@ extraArgs:
 
 sources:
   - ingress
+  - gateway-httproute
   - crd

@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # "envoy-gateway" is taken by the on-prem app.
+  name: envoy-gateway-do
+spec:
+  project: infra
+  destination:
+    namespace: envoy-gateway-system
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+  sources:
+    # DOKS ships and manages the Gateway API CRDs, so only Envoy Gateway's own CRDs are installed.
+    - repoURL: docker.io/envoyproxy
+      chart: gateway-crds-helm
+      targetRevision: 1.9.3
+      helm:
+        valuesObject:
+          crds:
+            gatewayAPI:
+              enabled: false
+            envoyGateway:
+              enabled: true
+    - repoURL: docker.io/envoyproxy
+      chart: gateway-helm
+      targetRevision: 1.9.3
+      helm:
+        skipCrds: true
+    - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
+      targetRevision: main
+      path: resources/envoy-gateway
