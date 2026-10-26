@@ -61,15 +61,12 @@ redis:
     existingSecret: redis-secret
 
 ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-body-size: "80m"
+  enabled: false
 
-  tls:
-   - secretName: matrix-tls
-     hosts:
-       - siegrist.io
-       - matrix.siegrist.io
+# Routes /_matrix, /_synapse and /.well-known/matrix on siegrist.io and matrix.siegrist.io.
+gateway:
+  enabled: true
+  parentRefs:
+    - name: public
+      namespace: envoy-gateway-system
+      sectionName: https

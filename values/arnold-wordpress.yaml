@@ -20,11 +20,11 @@ mariadb:
     persistence:
       size: 500Mi
 
-ingress:
+httpRoute:
   enabled: true
-  ingressClassName: "nginx"
-  hostname: arnold.siegrist.io
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-body-size: "80m"
-  tls: true
+  parentRefs:
+    - name: public
+      namespace: envoy-gateway-system
+      sectionName: https
+  hostnames:
+    - arnold.siegrist.io
