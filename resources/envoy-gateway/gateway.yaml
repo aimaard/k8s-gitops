@@ -5,7 +5,8 @@ metadata:
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
 ---
-# ClusterIP until the HTTPRoutes are in place; it then adopts the ingress-nginx load balancer.
+# Adopts the load balancer ingress-nginx disowned, so the public IP stays 209.38.183.48.
+# https://github.com/digitalocean/digitalocean-cloud-controller-manager/blob/master/docs/controllers/services/examples/README.md#changing-ownership-of-a-load-balancer
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -16,7 +17,10 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: ClusterIP
+        type: LoadBalancer
+        annotations:
+          kubernetes.digitalocean.com/load-balancer-id: 207cd624-10cc-4cce-a4a9-d24eaab0736a
+          service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL
 ---
 # The single entry point for the cluster; apps attach HTTPRoutes to the https listener.
 apiVersion: gateway.networking.k8s.io/v1
