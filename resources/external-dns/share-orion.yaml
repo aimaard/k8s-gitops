@@ -1,0 +1,13 @@
+# Public record for the on-prem share server; UniFi forwards WAN 443 to its Gateway listener.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: share-orion
+  namespace: external-dns
+spec:
+  endpoints:
+    - dnsName: share.orion.siegrist.io
+      recordType: A
+      recordTTL: 300
+      targets:
+        - 85.195.238.43

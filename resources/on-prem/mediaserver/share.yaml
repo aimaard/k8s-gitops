@@ -1,0 +1,133 @@
+# Read-only file server for sharing downloads with friends at https://share.orion.siegrist.io.
+# It only serves media/share on the media volume: hard-link files there to share them
+# (same filesystem, so no extra space). Basic auth is done by Envoy; the share-basic-auth
+# Secret (key .htpasswd, {SHA} format) is created by hand and not stored in git.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: share-nginx
+  namespace: mediaserver
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      root /share;
+      autoindex on;
+      autoindex_exact_size off;
+      charset utf-8;
+      sendfile on;
+      tcp_nopush on;
+      location / {
+        try_files $uri $uri/ =404;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: share
+  namespace: mediaserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: share
+  template:
+    metadata:
+      labels:
+        app: share
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.30.6-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: media
+              mountPath: /share
+              subPath: media/share
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: mediaserver-pvc
+            readOnly: true
+        - name: config
+          configMap:
+            name: share-nginx
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: share
+  namespace: mediaserver
+spec:
+  selector:
+    app: share
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: share
+  namespace: mediaserver
+spec:
+  parentRefs:
+    - name: homeserver
+      namespace: envoy-gateway-system
+      sectionName: share
+  hostnames:
+    - share.orion.siegrist.io
+  rules:
+    - backendRefs:
+        - name: share
+          port: 8080
+      # Downloads take far longer than Envoy's default 15s route timeout.
+      timeouts:
+        request: 0s
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: share-basic-auth
+  namespace: mediaserver
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: share
+  basicAuth:
+    users:
+      name: share-basic-auth
