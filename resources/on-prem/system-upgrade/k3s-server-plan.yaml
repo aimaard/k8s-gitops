@@ -1,6 +1,5 @@
-# Upgrades k3s to whatever the stable channel points at.
-# To control minor bumps instead, replace `channel` with `version: v1.36.5+k3s1`
-# and let Renovate bump it.
+# Follows the k3s v1.37 channel: patch releases are applied automatically, the next minor
+# needs this channel bumped (check Cilium's Kubernetes compatibility first).
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
 metadata:
@@ -10,7 +9,7 @@ spec:
   concurrency: 1
   cordon: true
   serviceAccountName: system-upgrade
-  channel: https://update.k3s.io/v1-release/channels/stable
+  channel: https://update.k3s.io/v1-release/channels/v1.37
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
