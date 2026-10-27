@@ -50,6 +50,22 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    # The only listener reachable from the internet (UniFi forwards WAN 443 here), so nothing
+    # but the share server can be reached from outside, whatever Host header is sent.
+    - name: share
+      protocol: HTTPS
+      port: 8443
+      hostname: share.orion.siegrist.io
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: orion-wildcard-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: mediaserver
 ---
 # siegrist.io sends HSTS with includeSubDomains, so browsers insist on HTTPS anyway.
 apiVersion: gateway.networking.k8s.io/v1
