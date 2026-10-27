@@ -1,6 +1,6 @@
 # Read-only file server for sharing downloads with friends at https://share.orion.siegrist.io.
-# It only serves media/share on the media volume: hard-link files there to share them
-# (same filesystem, so no extra space). Basic auth is done by Envoy; the share-basic-auth
+# It serves the whole media library (movies and tv), but not config/ (app secrets) or
+# downloads/ on the same volume. Basic auth is done by Envoy; the share-basic-auth
 # Secret (key .htpasswd, {SHA} format) is created by hand and not stored in git.
 apiVersion: v1
 kind: ConfigMap
@@ -67,7 +67,7 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /share
-              subPath: media/share
+              subPath: media
               readOnly: true
             - name: config
               mountPath: /etc/nginx/conf.d
