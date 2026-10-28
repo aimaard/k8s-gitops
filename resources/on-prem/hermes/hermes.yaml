@@ -10,6 +10,27 @@ spec:
     requests:
       storage: 5Gi
 ---
+# Full admin, at the user's request: the agent manages the cluster with kubectl and gets
+# root on the node through `kubectl debug node/homeserver`.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hermes
+  namespace: hermes
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hermes-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: hermes
+    namespace: hermes
+---
 # Secret `hermes-env` is created by hand (not in git):
 #   ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS,
 #   RADARR_API_KEY, SONARR_API_KEY, optional GROQ_API_KEY (voice memos)
@@ -34,8 +55,7 @@ spec:
         # its model so a model change rolls the pod.
         hermes/model: claude-haiku-5-5
     spec:
-      # The agent has a shell; it gets no Kubernetes API access.
-      automountServiceAccountToken: false
+      serviceAccountName: hermes
       initContainers:
         - name: config
           image: busybox:1.37.0
@@ -43,6 +63,25 @@ spec:
           volumeMounts:
             - {name: data, mountPath: /opt/data}
             - {name: config, mountPath: /config}
+        # /opt/data/.local/bin is on the agent's PATH. Keep the version in step with k3s.
+        - name: kubectl
+          image: curlimages/curl:8.17.0
+          env:
+            - {name: KUBECTL_VERSION, value: v1.36.5}
+            - {name: KUBECTL_SHA256, value: 33bc88a24c3b09cf55bfd59e6ca977881b61fc3f25ab65bc80c65b430248648e}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /opt/data/.local/bin
+              curl -fsSLo /tmp/kubectl "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+              echo "$KUBECTL_SHA256  /tmp/kubectl" | sha256sum -c -
+              install -m 0755 /tmp/kubectl /opt/data/.local/bin/kubectl
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - {name: data, mountPath: /opt/data}
       containers:
         - name: hermes
           image: nousresearch/hermes-agent:v0.22.5
@@ -67,8 +106,8 @@ spec:
           configMap:
             name: hermes-skill-home-media
 ---
-# No inbound traffic (Telegram is polled). Outbound: DNS, Radarr/Sonarr, and
-# the internet, but not the rest of the LAN or cluster.
+# No inbound traffic (Telegram is polled). Outbound: DNS, Radarr/Sonarr, the
+# Kubernetes API (CiliumNetworkPolicy below) and the internet, but not the rest of the LAN.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -104,3 +143,16 @@ spec:
         - ipBlock:
             cidr: 0.0.0.0/0
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+---
+# The API server runs on the node, which a NetworkPolicy ipBlock doesn't match under Cilium.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: hermes-kube-apiserver
+  namespace: hermes
+spec:
+  endpointSelector:
+    matchLabels:
+      app: hermes
+  egress:
+    - toEntities: [kube-apiserver]
