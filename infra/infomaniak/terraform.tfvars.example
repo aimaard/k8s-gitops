@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars. Look up the IDs with:
+#   account_id=$(curl -s -H "Authorization: Bearer $INFOMANIAK_TOKEN" https://api.infomaniak.com/2/profile | jq '.data.preferences.account.current_account_id')
+#   curl -s -H "Authorization: Bearer $INFOMANIAK_TOKEN" "https://api.infomaniak.com/1/public_clouds?account_id=$account_id" | jq '.data[] | {name: .customer_name, id}'
+#   curl -s -H "Authorization: Bearer $INFOMANIAK_TOKEN" https://api.infomaniak.com/1/public_clouds/<id>/projects | jq '.data[] | {name, public_cloud_project_id}'
+public_cloud_id         = 0
+public_cloud_project_id = 0

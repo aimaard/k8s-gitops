@@ -1,0 +1,14 @@
+# Matrix keeps running on the old DigitalOcean cluster until it's replaced by matrix-stack here.
+# Remove once matrix.siegrist.io is served by this cluster.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: matrix-digitalocean
+  namespace: external-dns
+spec:
+  endpoints:
+    - dnsName: matrix.siegrist.io
+      recordType: A
+      recordTTL: 300
+      targets:
+        - 209.38.183.48

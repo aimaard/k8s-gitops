@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   # "envoy-gateway" is taken by the on-prem app.
-  name: envoy-gateway-do
+  name: envoy-gateway-cloud
 spec:
   project: infra
   destination:
@@ -15,7 +15,7 @@ spec:
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
   sources:
-    # DOKS ships and manages the Gateway API CRDs, so only Envoy Gateway's own CRDs are installed.
+    # Infomaniak's managed Kubernetes doesn't ship the Gateway API CRDs, so they're installed here.
     - repoURL: docker.io/envoyproxy
       chart: gateway-crds-helm
       targetRevision: 1.9.3
@@ -23,7 +23,8 @@ spec:
         valuesObject:
           crds:
             gatewayAPI:
-              enabled: false
+              enabled: true
+              channel: standard
             envoyGateway:
               enabled: true
     - repoURL: docker.io/envoyproxy
