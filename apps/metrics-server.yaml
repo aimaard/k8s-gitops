@@ -16,3 +16,8 @@ spec:
     - repoURL: 'https://kubernetes-sigs.github.io/metrics-server'
       chart: metrics-server
       targetRevision: 3.14.0
+      helm:
+        valuesObject:
+          # Infomaniak's kubelet serving certificates don't include the node IPs.
+          args:
+            - --kubelet-insecure-tls

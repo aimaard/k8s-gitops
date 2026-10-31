@@ -31,6 +31,13 @@ controller:
   extraContainers:
     - image: linuxserver/wireguard:latest
       name: wireguard
+      # Skips the image's init: the Ubuntu nodes' AppArmor profile for /usr/bin/wg-quick blocks it from
+      # running the image's readlink, and on failure the init deletes the pod's default route.
+      # Started through bash, the script runs unconfined.
+      command:
+        - bash
+        - -c
+        - bash /usr/bin/wg-quick up /config/wg_confs/wg0.conf && exec sleep infinity
       securityContext:
         capabilities:
           add:
