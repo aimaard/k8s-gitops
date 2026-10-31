@@ -25,6 +25,15 @@ synapse:
         # everything the WhatsApp bridge stores) is kept.
         media_retention:
           remote_media_lifetime: 90d
+    1-message-retention:
+      config: |
+        # Only rooms with an m.room.retention policy are purged; resources/matrix/whatsapp-retention.yaml
+        # sets one on the WhatsApp rooms. Expired events are hidden from clients right away and deleted
+        # by the next purge job (Synapse always keeps the latest event of a room, hidden).
+        retention:
+          enabled: true
+          purge_jobs:
+            - interval: 1h
 
 matrixAuthenticationService:
   ingress:
