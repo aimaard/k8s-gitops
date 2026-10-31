@@ -1,6 +1,11 @@
-# Keeps WhatsApp messages for at most 14 days: sets an m.room.retention policy on every room the
-# bridge bot is in (all portals, the management room and the bridge's spaces), acting as the bot
-# with the appservice token. Synapse then purges older events (see values/matrix-stack.yaml).
+# Keeps WhatsApp messages for at most 14 days:
+# - set-retention.py sets an m.room.retention policy on every room the bridge bot is in (all
+#   portals, the management room and the bridge's spaces), acting as the bot with the appservice
+#   token. Synapse then purges older events (see values/matrix-stack.yaml).
+# - delete-media.py deletes the files behind them, which Synapse keeps after purging events. The
+#   rooms are encrypted, so Synapse can't tell which room a file belongs to: it deletes what the
+#   bridge uploaded (as the bot or a ghost) more than 14 days ago, except avatars still in use.
+#   It needs a Synapse admin token (1Password item whatsapp-media-cleanup).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -54,6 +59,104 @@ data:
             print(f"Failed to set retention in {room}: {e.code} {e.read().decode()}", file=sys.stderr)
 
     print(f"Checked {len(rooms)} rooms, {failed} failed")
+    sys.exit(1 if failed else 0)
+  delete-media.py: |
+    import json
+    import os
+    import re
+    import sys
+    import time
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    HOMESERVER = os.environ["HOMESERVER"]
+    BOT = os.environ["BOT_USER_ID"]
+    GHOST = re.compile(os.environ["GHOST_USER_ID_PATTERN"])
+    MAX_LIFETIME = int(os.environ["MAX_LIFETIME_MS"])
+    DRY_RUN = os.environ.get("DRY_RUN") == "true"
+
+    with open("/registration/registration.yaml") as f:
+        AS_TOKEN = re.search(r'^as_token:\s*"?([^"\s]+)', f.read(), re.M).group(1)
+    with open("/admin/token") as f:
+        ADMIN_TOKEN = f.read().strip()
+
+
+    def request(method, path, token, params=None):
+        url = f"{HOMESERVER}{path}"
+        if params:
+            url += "?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, method=method, headers={"Authorization": f"Bearer {token}"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.load(resp)
+
+
+    def as_bot(path):
+        return request("GET", path, AS_TOKEN, {"user_id": BOT})
+
+
+    def admin(method, path, params=None):
+        return request(method, path, ADMIN_TOKEN, params)
+
+
+    def paginate(path, key, params):
+        params = dict(params)
+        while True:
+            page = admin("GET", path, params)
+            yield from page[key]
+            if "next_token" not in page:
+                return
+            params["from"] = page["next_token"]
+
+
+    q = urllib.parse.quote
+
+    # Avatars of the bridged rooms and their members stay: the bridge uploads them once and reuses them.
+    in_use = set()
+    for room in as_bot("/_matrix/client/v3/joined_rooms")["joined_rooms"]:
+        for event in as_bot(f"/_matrix/client/v3/rooms/{q(room)}/state"):
+            content = event.get("content", {})
+            if event["type"] == "m.room.avatar":
+                in_use.add(content.get("url"))
+            elif event["type"] == "m.room.member":
+                in_use.add(content.get("avatar_url"))
+
+    users = [BOT] + [
+        u["name"]
+        # guests=false: Synapse rejects the default (true) when MAS handles accounts.
+        for u in paginate("/_synapse/admin/v2/users", "users",
+                          {"user_id": "@whatsapp_", "guests": "false", "limit": 500})
+        if GHOST.fullmatch(u["name"])
+    ]
+
+    cutoff = int(time.time() * 1000) - MAX_LIFETIME
+    deleted = failed = 0
+    for user in users:
+        old = [
+            m for m in paginate(f"/_synapse/admin/v1/users/{q(user)}/media", "media",
+                                {"order_by": "created_ts", "limit": 500})
+            if m["created_ts"] < cutoff
+        ]
+        if not old:
+            continue
+        avatar = admin("GET", f"/_synapse/admin/v2/users/{q(user)}").get("avatar_url")
+        server = user.split(":", 1)[1]
+        for media in old:
+            mxc = f"mxc://{server}/{media['media_id']}"
+            if mxc in in_use or mxc == avatar:
+                continue
+            if DRY_RUN:
+                print(f"Would delete {mxc} ({user})")
+                deleted += 1
+                continue
+            try:
+                admin("DELETE", f"/_synapse/admin/v1/media/{q(server)}/{q(media['media_id'])}")
+                deleted += 1
+            except urllib.error.HTTPError as e:
+                failed += 1
+                print(f"Failed to delete {mxc}: {e.code} {e.read().decode()}", file=sys.stderr)
+
+    print(f"Checked {len(users)} users, deleted {deleted} files, {failed} failed")
     sys.exit(1 if failed else 0)
 ---
 apiVersion: batch/v1
@@ -115,3 +218,79 @@ spec:
                 items:
                   - key: registration.yaml
                     path: registration.yaml
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: whatsapp-media-retention
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: delete-media
+              image: python:3.13-alpine
+              command: [python, /script/delete-media.py]
+              env:
+                - name: HOMESERVER
+                  value: http://matrix-stack-synapse:8008
+                - name: BOT_USER_ID
+                  value: "@whatsappbot:siegrist.io"
+                - name: GHOST_USER_ID_PATTERN
+                  value: "@whatsapp_[^:]+:siegrist\\.io"
+                - name: MAX_LIFETIME_MS
+                  value: "1209600000"  # 14 days
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+                - name: registration
+                  mountPath: /registration
+                - name: admin
+                  mountPath: /admin
+          volumes:
+            - name: script
+              configMap:
+                name: whatsapp-retention
+            - name: registration
+              secret:
+                secretName: mautrix-whatsapp-config
+                items:
+                  - key: registration.yaml
+                    path: registration.yaml
+            - name: admin
+              secret:
+                secretName: whatsapp-media-cleanup
+                items:
+                  - key: token
+                    path: token
+---
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: whatsapp-media-cleanup
+spec:
+  itemPath: "vaults/k8s/items/whatsapp-media-cleanup"
