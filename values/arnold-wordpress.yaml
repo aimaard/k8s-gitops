@@ -5,9 +5,16 @@ service:
   type: ClusterIP
 
 resourcesPreset: none
+# Envoy appends the client address (from the load balancer's PROXY header) as the last
+# X-Forwarded-For entry. Only applied to wp-config.php on a fresh install.
+wordpressExtraConfigContent: |
+  if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+    $forwarded_for = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+    $_SERVER['REMOTE_ADDR'] = trim( end( $forwarded_for ) );
+  }
 persistence:
   size: 4Gi
-# The data volume is ReadWriteOnce on DO block storage, which attaches to one node
+# The data volume is ReadWriteOnce Cinder block storage, which attaches to one node
 # at a time: a rolling update deadlocks when the new pod lands on the other node.
 updateStrategy:
   type: Recreate

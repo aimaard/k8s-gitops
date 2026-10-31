@@ -2,10 +2,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: about-me
-  annotations:
-    # The matrix route already publishes siegrist.io, so external-dns must not pick it up twice.
-    # See https://github.com/kubernetes-sigs/external-dns/issues/819#issuecomment-1679122051
-    external-dns.alpha.kubernetes.io/gateway-hostname-source: annotation-only
 spec:
   parentRefs:
     - name: public

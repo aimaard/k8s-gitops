@@ -5,8 +5,11 @@ metadata:
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
 ---
-# Adopts the load balancer ingress-nginx disowned, so the public IP stays 209.38.183.48.
-# https://github.com/digitalocean/digitalocean-cloud-controller-manager/blob/master/docs/controllers/services/examples/README.md#changing-ownership-of-a-load-balancer
+# The Octavia load balancer passes the client address to Envoy via PROXY protocol (see the
+# ClientTrafficPolicy below), so apps see real source IPs in X-Forwarded-For.
+# OCCM marks the address ipMode: Proxy, so in-cluster requests to it also go through the
+# load balancer and carry the header instead of being short-circuited to Envoy.
+# https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/expose-applications-using-loadbalancer-type-service.md
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -19,8 +22,9 @@ spec:
       envoyService:
         type: LoadBalancer
         annotations:
-          kubernetes.digitalocean.com/load-balancer-id: 207cd624-10cc-4cce-a4a9-d24eaab0736a
-          service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL
+          loadbalancer.openstack.org/proxy-protocol: "true"
+          # Keeps the floating IP if the Service is ever recreated.
+          loadbalancer.openstack.org/keep-floatingip: "true"
       # One Envoy per node, so draining a node during a cluster upgrade always leaves one serving.
       envoyDeployment:
         replicas: 2
@@ -47,8 +51,8 @@ spec:
               memory: 128Mi
       envoyPDB:
         minAvailable: 1
-  # The DO load balancer needs up to ~15s (3 failed checks every 3s, 5s timeout) to stop sending
-  # traffic to a node whose Envoy is shutting down, so keep serving well past that.
+  # The load balancer's health checks need a few seconds to stop sending traffic to a node
+  # whose Envoy is shutting down, so keep serving well past that.
   shutdown:
     minDrainDuration: 30s
     drainTimeout: 60s
@@ -59,9 +63,6 @@ kind: Gateway
 metadata:
   name: public
   namespace: envoy-gateway-system
-  annotations:
-    # The load balancer's IP, which stays the same when Envoy takes it over.
-    external-dns.kubernetes.io/target: 209.38.183.48
 spec:
   gatewayClassName: envoy
   infrastructure:
@@ -87,6 +88,20 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+---
+# Every connection from the load balancer starts with a PROXY header; Envoy takes the client
+# address from it. Connections without one are rejected.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: public
+  namespace: envoy-gateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: public
+  proxyProtocol: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

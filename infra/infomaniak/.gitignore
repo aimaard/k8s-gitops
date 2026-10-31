@@ -1,0 +1,6 @@
+# State and outputs contain the cluster kubeconfig; never commit them.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+kubeconfig*

@@ -1,6 +1,6 @@
 # k8s-gitops
 
-This repository contains the GitOps configuration for my personal Kubernetes cluster hosted on DigitalOcean, managed using ArgoCD. It follows the "App of Apps" pattern to organize and deploy applications and infrastructure components.
+This repository contains the GitOps configuration for my personal Kubernetes cluster hosted on Infomaniak (see [infra/infomaniak](infra/infomaniak/README.md)), managed using ArgoCD. It follows the "App of Apps" pattern to organize and deploy applications and infrastructure components.
 
 ## Getting Started
 
