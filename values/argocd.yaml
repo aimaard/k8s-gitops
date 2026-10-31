@@ -12,6 +12,13 @@ configs:
       g, siegy22-org:default, role:admin
   cm:
     admin.enabled: false
+    # Nothing serves Ingresses (Envoy Gateway only reads HTTPRoutes), so they never get an address and
+    # would stay Progressing forever. matrix-stack renders them unconditionally.
+    resource.customizations.health.networking.k8s.io_Ingress: |
+      hs = {}
+      hs.status = "Healthy"
+      hs.message = "Not served; traffic is routed with HTTPRoutes"
+      return hs
     dex.config: |
       connectors:
         - type: github
