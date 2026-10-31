@@ -21,6 +21,8 @@ spec:
     kubernetes:
       envoyService:
         type: LoadBalancer
+        # The floating IP the load balancer got on creation; kept (see below) and reused if recreated.
+        loadBalancerIP: 179.237.117.28
         annotations:
           loadbalancer.openstack.org/proxy-protocol: "true"
           # Keeps the floating IP if the Service is ever recreated.
