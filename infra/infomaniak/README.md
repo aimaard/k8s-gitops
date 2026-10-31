@@ -71,4 +71,18 @@ Its workloads keep serving until DNS points away from them.
 6. Pin the IP: set `loadBalancerIP` on the `public` EnvoyProxy's `envoyService`.
 7. Hand DNS over: `kubectl --kubeconfig $NEW apply -f ../../app-of-apps.yaml` (without the exclude).
    external-dns uses the same TXT owner as before, so it updates the existing records.
-8. Matrix is migrated separately; afterwards the DO cluster, its load balancer and volumes can be deleted.
+8. Matrix is migrated separately (below); afterwards the DO cluster, its load balancer and volumes can be deleted.
+
+## Matrix (matrix-stack)
+
+Installed fresh, without the old messages. It reuses the old signing key, so remote servers keep
+trusting `siegrist.io`.
+
+- **First sync**: the chart's PreSync hooks mount the `signing-key` and `mautrix-whatsapp-config`
+  secrets, but Argo CD runs hooks before any regular resources. Sync only the `OnePasswordItem`s
+  once, then the whole app.
+- **Accounts** live in the Matrix Authentication Service:
+  `kubectl -n matrix exec -it deploy/matrix-stack-matrix-authentication-service -- mas-cli manage register-user`
+- **WhatsApp bridge**: the 1Password item `mautrix-whatsapp-config` holds `config.yaml` and the
+  `registration.yaml` Synapse loads. End-to-bridge encryption with MAS needs `encryption.msc4190`
+  in the config and `io.element.msc4190` in the registration.
