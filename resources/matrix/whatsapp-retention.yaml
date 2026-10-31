@@ -123,7 +123,9 @@ data:
 
     users = [BOT] + [
         u["name"]
-        for u in paginate("/_synapse/admin/v2/users", "users", {"user_id": "@whatsapp_", "limit": 500})
+        # guests=false: Synapse rejects the default (true) when MAS handles accounts.
+        for u in paginate("/_synapse/admin/v2/users", "users",
+                          {"user_id": "@whatsapp_", "guests": "false", "limit": 500})
         if GHOST.fullmatch(u["name"])
     ]
 
