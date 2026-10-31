@@ -1,0 +1,47 @@
+serverName: siegrist.io
+
+# Envoy doesn't read Ingresses: the chart's Ingresses are inert and resources/matrix/httproutes.yaml
+# routes to the same Services instead.
+ingress:
+  tlsEnabled: false
+
+synapse:
+  ingress:
+    host: matrix.siegrist.io
+  # The key from the previous (ananace chart) install, so remote servers keep trusting siegrist.io.
+  signingKey:
+    secret: signing-key
+    secretKey: signing.key
+  media:
+    storage:
+      size: 40Gi
+  appservices:
+    - secret: mautrix-whatsapp-config
+      secretKey: registration.yaml
+  additional:
+    0-media-retention:
+      config: |
+        # Cached media from other servers is re-fetched on demand. Local media (incl.
+        # everything the WhatsApp bridge stores) is kept.
+        media_retention:
+          remote_media_lifetime: 90d
+
+matrixAuthenticationService:
+  ingress:
+    host: account.siegrist.io
+
+elementWeb:
+  ingress:
+    host: chat.siegrist.io
+
+# Element Call needs its media ports exposed through another load balancer.
+matrixRTC:
+  enabled: false
+
+elementAdmin:
+  enabled: false
+
+wellKnownDelegation:
+  # siegrist.io itself is the about-me page.
+  baseDomainRedirect:
+    enabled: false
