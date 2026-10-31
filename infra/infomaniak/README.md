@@ -43,6 +43,14 @@ kubectl --kubeconfig $NEW apply -f ../../app-of-apps.yaml
 kubectl --kubeconfig $NEW -n argocd delete secret -l owner=helm,name=argocd  # Argo CD owns it now
 ```
 
+The first sync needs two nudges, because automated sync doesn't retry a failed revision:
+
+- `1password-connect` creates a `ServiceMonitor` (needs the monitoring CRDs) while `monitoring` needs
+  the `OnePasswordItem` CRD. Sync `1password-connect` once without its ServiceMonitor (in the UI:
+  sync, untick it), then sync everything that failed.
+- Apps whose `OnePasswordItem`s ran before Connect was up fail their sync; sync them again once
+  `kubectl -n kube-system get deploy onepassword-connect` is ready.
+
 ## Moving from DigitalOcean (one-time)
 
 Only one Argo CD may manage the on-prem cluster and only one external-dns may own the
