@@ -1,0 +1,117 @@
+# Keeps WhatsApp messages for at most 14 days: sets an m.room.retention policy on every room the
+# bridge bot is in (all portals, the management room and the bridge's spaces), acting as the bot
+# with the appservice token. Synapse then purges older events (see values/matrix-stack.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whatsapp-retention
+data:
+  set-retention.py: |
+    import json
+    import os
+    import re
+    import sys
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    HOMESERVER = os.environ["HOMESERVER"]
+    BOT = os.environ["BOT_USER_ID"]
+    MAX_LIFETIME = int(os.environ["MAX_LIFETIME_MS"])
+
+    with open("/registration/registration.yaml") as f:
+        TOKEN = re.search(r'^as_token:\s*"?([^"\s]+)', f.read(), re.M).group(1)
+
+
+    def request(method, path, body=None):
+        url = f"{HOMESERVER}{path}?user_id={urllib.parse.quote(BOT)}"
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(url, method=method, data=data, headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+        })
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.load(resp)
+
+
+    rooms = request("GET", "/_matrix/client/v3/joined_rooms")["joined_rooms"]
+    failed = 0
+    for room in rooms:
+        path = f"/_matrix/client/v3/rooms/{urllib.parse.quote(room)}/state/m.room.retention"
+        try:
+            current = request("GET", path)
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            current = {}
+        if current.get("max_lifetime") == MAX_LIFETIME:
+            continue
+        try:
+            request("PUT", path, {"max_lifetime": MAX_LIFETIME})
+            print(f"Set retention in {room}")
+        except urllib.error.HTTPError as e:
+            failed += 1
+            print(f"Failed to set retention in {room}: {e.code} {e.read().decode()}", file=sys.stderr)
+
+    print(f"Checked {len(rooms)} rooms, {failed} failed")
+    sys.exit(1 if failed else 0)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: whatsapp-retention
+spec:
+  # New portals get their policy within minutes; Synapse applies it to their whole history.
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: set-retention
+              image: python:3.13-alpine
+              command: [python, /script/set-retention.py]
+              env:
+                - name: HOMESERVER
+                  value: http://matrix-stack-synapse:8008
+                - name: BOT_USER_ID
+                  value: "@whatsappbot:siegrist.io"
+                - name: MAX_LIFETIME_MS
+                  value: "1209600000"  # 14 days
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+                - name: registration
+                  mountPath: /registration
+          volumes:
+            - name: script
+              configMap:
+                name: whatsapp-retention
+            - name: registration
+              secret:
+                secretName: mautrix-whatsapp-config
+                items:
+                  - key: registration.yaml
+                    path: registration.yaml
