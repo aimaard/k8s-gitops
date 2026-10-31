@@ -86,3 +86,10 @@ trusting `siegrist.io`.
 - **WhatsApp bridge**: the 1Password item `mautrix-whatsapp-config` holds `config.yaml` and the
   `registration.yaml` Synapse loads. End-to-bridge encryption with MAS needs `encryption.msc4190`
   in the config and `io.element.msc4190` in the registration.
+- **WhatsApp media cleanup** (`resources/matrix/whatsapp-retention.yaml`) uses a Synapse admin token
+  of the `media-cleanup` account, stored in the 1Password item `whatsapp-media-cleanup` (field `token`):
+  ```sh
+  MAS="kubectl -n matrix exec deploy/matrix-stack-matrix-authentication-service -c matrix-authentication-service --"
+  $MAS mas-cli manage register-user -y -d "Media cleanup" media-cleanup
+  $MAS mas-cli manage issue-compatibility-token media-cleanup --yes-i-want-to-grant-synapse-admin-privileges
+  ```
