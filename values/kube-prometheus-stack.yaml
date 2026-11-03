@@ -5,6 +5,7 @@ defaultRules:
   create: true
   rules:
     kubeControllerManager: false
+    kubeProxy: false
     kubeSchedulerAlerting: false
     kubeSchedulerRecording: false
   disabled:
@@ -13,6 +14,9 @@ defaultRules:
 kubeScheduler:
   enabled: false
 kubeControllerManager:
+  enabled: false
+# Cilium runs with kubeProxyReplacement, so there is no kube-proxy to scrape
+kubeProxy:
   enabled: false
 
 alertmanager:
