@@ -14,7 +14,7 @@ spec:
       - SkipDryRunOnMissingResource=true
   sources:
     - repoURL: 'https://github.com/rancher/system-upgrade-controller.git'
-      targetRevision: v0.20.2
+      targetRevision: v0.21.0
       path: .
       kustomize:
         patches:
@@ -30,7 +30,7 @@ spec:
                   seLinuxOptions:
                     type: spc_t
     - repoURL: 'https://github.com/rancher/system-upgrade-controller.git'
-      targetRevision: v0.20.2
+      targetRevision: v0.21.0
       path: pkg/crds/yaml/generated
     - repoURL: 'https://github.com/aimaard/k8s-gitops.git'
       targetRevision: main
