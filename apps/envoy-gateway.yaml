@@ -29,7 +29,7 @@ spec:
               enabled: true
     - repoURL: docker.io/envoyproxy
       chart: gateway-helm
-      targetRevision: 1.9.3
+      targetRevision: 1.10.0
       helm:
         skipCrds: true
         valueFiles:
