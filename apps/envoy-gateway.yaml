@@ -18,7 +18,7 @@ spec:
     # Infomaniak's managed Kubernetes doesn't ship the Gateway API CRDs, so they're installed here.
     - repoURL: docker.io/envoyproxy
       chart: gateway-crds-helm
-      targetRevision: 1.9.3
+      targetRevision: 1.10.0
       helm:
         valuesObject:
           crds:
