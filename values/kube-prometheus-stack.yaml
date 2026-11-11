@@ -10,6 +10,10 @@ defaultRules:
     kubeSchedulerRecording: false
   disabled:
     KubeClientCertificateExpiration: true
+    # The managed control plane has a single apiserver (not HA, by choice), so
+    # these fire on every apiserver blip. KubeAPIDown still covers a real outage.
+    KubeAPIErrorBudgetBurn: true
+    KubeAPIInstanceUnreachable: true
 
 kubeScheduler:
   enabled: false
@@ -56,6 +60,11 @@ alertmanager:
       - receiver: 'null'
         matchers:
           - alertname = "Watchdog"
+      # TargetDown comes from the shared general.rules, so silence only the apiserver job
+      - receiver: 'null'
+        matchers:
+          - alertname = "TargetDown"
+          - job = "apiserver"
     receivers:
     - name: 'null'
     - name: 'discord'
