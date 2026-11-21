@@ -8,11 +8,14 @@ defaultRules:
     kubeProxy: false
     kubeSchedulerAlerting: false
     kubeSchedulerRecording: false
+    # The managed control plane has a single apiserver (not HA, by choice), so the
+    # SLO alerts fire on every apiserver blip. This group holds only
+    # KubeAPIErrorBudgetBurn; disabling that alert by name leaves an empty
+    # group, which renders as `rules: null` and breaks the ArgoCD sync.
+    kubeApiserverSlos: false
   disabled:
     KubeClientCertificateExpiration: true
-    # The managed control plane has a single apiserver (not HA, by choice), so
-    # these fire on every apiserver blip. KubeAPIDown still covers a real outage.
-    KubeAPIErrorBudgetBurn: true
+    # Same reason as above. KubeAPIDown still covers a real outage.
     KubeAPIInstanceUnreachable: true
 
 kubeScheduler:
